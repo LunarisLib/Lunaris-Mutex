@@ -11,7 +11,7 @@ namespace Lunaris {
 	/// <summary>
 	/// <para>Shared_recursive_mutex is a shared_mutex with the recursive feature when locked non-shared mode.</para>
 	/// </summary>
-	class shared_recursive_mutex : public std::shared_mutex {
+	class shared_recursive_mutex : protected std::shared_mutex {
 		std::atomic<std::thread::id> _owner;
 		std::atomic<size_t> _count = 0;
 	public:
@@ -34,6 +34,7 @@ namespace Lunaris {
 		using std::shared_mutex::lock_shared;
 		using std::shared_mutex::try_lock_shared;
 		using std::shared_mutex::unlock_shared;
+		using std::shared_mutex::native_handle;
 	};
 
 	/// <summary>

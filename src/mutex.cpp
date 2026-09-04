@@ -1,10 +1,10 @@
-#pragma once
-#include "mutex.h"
+#include <Lunaris/Mutex/mutex.h>
+#include <Lunaris/Mutex/exception.h>
 
 namespace Lunaris {
-
-    inline void shared_recursive_mutex::lock()
-    {
+namespace Mutex {
+    
+    void SharedRecursiveMutex::lock() {
         const auto this_id = std::this_thread::get_id();
         if (_owner == this_id) {
             ++_count;
@@ -16,8 +16,7 @@ namespace Lunaris {
         }
     }
 
-    inline bool shared_recursive_mutex::try_lock()
-    {
+    bool SharedRecursiveMutex::try_lock() {
         const auto this_id = std::this_thread::get_id();
         const bool got = this->std::shared_mutex::try_lock();
         if (got) {
@@ -27,8 +26,7 @@ namespace Lunaris {
         return got;
     }
 
-    inline void shared_recursive_mutex::unlock()
-    {
+    void SharedRecursiveMutex::unlock() {
         const auto this_id = std::this_thread::get_id();
         if (_count > 0 && _owner == this_id) {
             if (--_count == 0) {
@@ -37,35 +35,37 @@ namespace Lunaris {
             }
         }
         else { // count 0 or not owner
-            throw std::runtime_error("shared_recursive_mutex unlock on non-owned or already unlocked mutex!");
+            throw MutexException("SharedRecursiveMutex unlock on non-owned or already unlocked mutex!");
         }
     }
 
-    inline bool fast_one_way_mutex::run()
-    {
-        return slave_ack = !request_stop;
+    bool FastOneWayMutex::run() {
+        const bool inv = !request_stop;
+        slave_ack = inv;
+        return inv;
     }
 
-    inline void fast_one_way_mutex::lock()
-    {
+    void FastOneWayMutex::lock() {
         request_stop = true;
-        while (slave_ack) std::this_thread::sleep_for(std::chrono::milliseconds(10)); // fastest way is power hungry
+        while (slave_ack) {
+            std::this_thread::yield();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
     }
 
-    inline void fast_one_way_mutex::unlock()
-    {
+    void FastOneWayMutex::unlock() {
         request_stop = false;
     }
 
-    inline fast_lock_guard::fast_lock_guard(fast_one_way_mutex& r)
+    FastLockGuard::FastLockGuard(FastOneWayMutex& r)
         : ref(r)
     {
         ref.lock();
     }
 
-    inline fast_lock_guard::~fast_lock_guard()
-    {
+    FastLockGuard::~FastLockGuard() {
         ref.unlock();
     }
 
-}
+} // namespace Mutex
+} // namespace Lunaris
